@@ -18,7 +18,8 @@ public:
     void onRandomKeyButtonClicked();
 	void onCopyRandomKeyButtonClicked();
     void onImportButtonClicked();
-    void onExportButtonClicked();
+    void onEncodeButtonClicked();
+    void onDecodeButtonClicked();
 
 private:
     Ui::OSGB_EncoderGuiClass ui;

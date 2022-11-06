@@ -17,7 +17,8 @@ OSGB_EncoderGui::OSGB_EncoderGui(QWidget *parent)
 	connect(ui.importButton, &QPushButton::clicked, this, &OSGB_EncoderGui::onImportButtonClicked);
 	connect(ui.randomKeyButton, &QPushButton::clicked, this, &OSGB_EncoderGui::onRandomKeyButtonClicked);
 	connect(ui.copyRandomKeyButton, &QPushButton::clicked, this, &OSGB_EncoderGui::onCopyRandomKeyButtonClicked);
-	connect(ui.exportButton, &QPushButton::clicked, this, &OSGB_EncoderGui::onExportButtonClicked);
+	connect(ui.encodeButton, &QPushButton::clicked, this, &OSGB_EncoderGui::onEncodeButtonClicked);
+	connect(ui.decodeButton, &QPushButton::clicked, this, &OSGB_EncoderGui::onDecodeButtonClicked);
 
 }
 
@@ -106,7 +107,7 @@ void OSGB_EncoderGui::onImportButtonClicked()
 
 	ui.importButton->setText("Import...");
 	ui.importButton->setEnabled(false);
-	ui.exportButton->setEnabled(false);
+	ui.encodeButton->setEnabled(false);
 
 	QFuture<void> future = QtConcurrent::run(
 		[this, jsonDirPath] {
@@ -122,16 +123,14 @@ void OSGB_EncoderGui::onImportButtonClicked()
 	connect(watcher, &QFutureWatcher<void>::finished, this, [=]() {
 		ui.importButton->setText("Import");
 		ui.importButton->setEnabled(true);
-		ui.exportButton->setEnabled(true);
+		ui.encodeButton->setEnabled(true);
 		watcher->deleteLater();
 		});
 	watcher->setFuture(future);
-	
-	
 
 }
 
-void OSGB_EncoderGui::onExportButtonClicked()
+void OSGB_EncoderGui::onEncodeButtonClicked()
 {
 	
 	auto rootJsonPath = ui.rootNodePath->text();
@@ -151,13 +150,14 @@ void OSGB_EncoderGui::onExportButtonClicked()
 			return;
 	}
 
-	ui.exportButton->setText("Export...");
-	ui.exportButton->setEnabled(false);
+	ui.encodeButton->setText("Export...");
+	ui.encodeButton->setEnabled(false);
+	ui.decodeButton->setEnabled(false);
 	ui.importButton->setEnabled(false);
 	ui.encodeKeyEdit->setEnabled(false);
 	ui.randomKeyButton->setEnabled(false);
 	ui.progressBar->setValue(0);
-	if (QDir(exportPath) == QDir(srcPath))
+	if (QDir(exportPath) != QDir(srcPath))
 	{
 		qCopyDirectory(QDir(srcPath), QDir(exportPath), true);
 		ui.statusLabel->setText("File Copied...");
@@ -167,11 +167,70 @@ void OSGB_EncoderGui::onExportButtonClicked()
 	
 	QStringList jsonFiles = fetchFileList(exportPath, { "*.json" });
 	OSGB_Encoder encoder;
+	auto xorKey = QCryptographicHash::hash(encodeKey.toLatin1(), QCryptographicHash::Md5).toHex();
+
 	// 遍历jsonFiles， 并更新processBar进度
 	for (int i = 0; i < jsonFiles.size(); ++i)
 	{
 		ui.statusLabel->setText(QString{ "Encode %1" }.arg(QFileInfo(jsonFiles[i]).fileName()));
-		encoder.encode(jsonFiles[i], encodeKey);
+		encoder.encode(jsonFiles[i], xorKey);
+		ui.progressBar->setValue((i + 1) * 100 / jsonFiles.size());
+		qApp->processEvents();
+	}
+	
+
+	ui.statusLabel->setText("Done");
+	ui.randomKeyButton->setEnabled(true);
+	ui.encodeKeyEdit->setEnabled(true);
+	ui.encodeButton->setEnabled(true);
+	ui.importButton->setEnabled(true);
+	ui.decodeButton->setEnabled(true);
+	ui.encodeButton->setText("Encode");
+}
+
+void OSGB_EncoderGui::onDecodeButtonClicked()
+{
+
+	auto rootJsonPath = ui.rootNodePath->text();
+	auto srcPath = QFileInfo(rootJsonPath).path();
+	auto encodeKey = ui.encodeKeyEdit->text();
+	auto exportPath = QFileDialog::getExistingDirectory(this, tr("Open Directory"), "", QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+
+	if (QDir(exportPath) != QDir(srcPath))
+	{
+		exportPath += "/" + QFileInfo(srcPath).fileName() + "_noencrypted";
+		if (QMessageBox::Cancel == QMessageBox::warning(this, "Warning", QString("Export to %1").arg(exportPath), QMessageBox::Ok | QMessageBox::Cancel))
+			return;
+	}
+	else
+	{
+		if (QMessageBox::Cancel == QMessageBox::warning(this, "Warning", "The export path is the same as the source path, will overwrite?", QMessageBox::Ok | QMessageBox::Cancel))
+			return;
+	}
+
+	ui.decodeButton->setText("Export...");
+	ui.decodeButton->setEnabled(false);
+	ui.encodeButton->setEnabled(false);
+	ui.importButton->setEnabled(false);
+	ui.encodeKeyEdit->setEnabled(false);
+	ui.randomKeyButton->setEnabled(false);
+	ui.progressBar->setValue(0);
+	if (QDir(exportPath) != QDir(srcPath))
+	{
+		qCopyDirectory(QDir(srcPath), QDir(exportPath), true);
+		ui.statusLabel->setText("File Copied...");
+	}
+
+	qApp->processEvents();
+
+	QStringList jsonFiles = fetchFileList(exportPath, { "*.json" });
+	OSGB_Encoder encoder;
+	auto xorKey = QCryptographicHash::hash(encodeKey.toLatin1(), QCryptographicHash::Md5).toHex();
+	// 遍历jsonFiles， 并更新processBar进度
+	for (int i = 0; i < jsonFiles.size(); ++i)
+	{
+		ui.statusLabel->setText(QString{ "Decode %1" }.arg(QFileInfo(jsonFiles[i]).fileName()));
+		encoder.decode(jsonFiles[i], xorKey);
 		ui.progressBar->setValue((i + 1) * 100 / jsonFiles.size());
 		qApp->processEvents();
 	}
@@ -179,9 +238,8 @@ void OSGB_EncoderGui::onExportButtonClicked()
 	ui.statusLabel->setText("Done");
 	ui.randomKeyButton->setEnabled(true);
 	ui.encodeKeyEdit->setEnabled(true);
-	ui.exportButton->setEnabled(true);
+	ui.encodeButton->setEnabled(true);
+	ui.decodeButton->setEnabled(true);
 	ui.importButton->setEnabled(true);
-	ui.exportButton->setText("Export");
-
-	
+	ui.decodeButton->setText("Decode");
 }
