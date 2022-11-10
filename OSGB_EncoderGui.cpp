@@ -19,7 +19,6 @@ OSGB_EncoderGui::OSGB_EncoderGui(QWidget *parent)
 	connect(ui.copyRandomKeyButton, &QPushButton::clicked, this, &OSGB_EncoderGui::onCopyRandomKeyButtonClicked);
 	connect(ui.encodeButton, &QPushButton::clicked, this, &OSGB_EncoderGui::onEncodeButtonClicked);
 	connect(ui.decodeButton, &QPushButton::clicked, this, &OSGB_EncoderGui::onDecodeButtonClicked);
-
 }
 
 OSGB_EncoderGui::~OSGB_EncoderGui()
@@ -116,7 +115,6 @@ void OSGB_EncoderGui::onImportButtonClicked()
 
 			ui.labelJsonCount->setText(QString{ "json count: %1" }.arg(jsonFiles.size()));
 			ui.labelB3dmCount->setText(QString{ "b3dm count: %1" }.arg(b3dmFiles.size()));
-
 		});
 	
 	QFutureWatcher<void>* watcher = new QFutureWatcher<void>(this);
@@ -127,12 +125,10 @@ void OSGB_EncoderGui::onImportButtonClicked()
 		watcher->deleteLater();
 		});
 	watcher->setFuture(future);
-
 }
 
 void OSGB_EncoderGui::onEncodeButtonClicked()
 {
-	
 	auto rootJsonPath = ui.rootNodePath->text();
 	auto srcPath = QFileInfo(rootJsonPath).path();
 	auto encodeKey = ui.encodeKeyEdit->text();
@@ -183,7 +179,6 @@ void OSGB_EncoderGui::onEncodeButtonClicked()
 		ui.progressBar->setValue((i + 1) * 100 / jsonFiles.size());
 		qApp->processEvents();
 	}
-	
 
 	ui.statusLabel->setText("Done");
 	ui.randomKeyButton->setEnabled(true);
@@ -196,7 +191,6 @@ void OSGB_EncoderGui::onEncodeButtonClicked()
 
 void OSGB_EncoderGui::onDecodeButtonClicked()
 {
-
 	auto rootJsonPath = ui.rootNodePath->text();
 	auto srcPath = QFileInfo(rootJsonPath).path();
 	auto encodeKey = ui.encodeKeyEdit->text();
