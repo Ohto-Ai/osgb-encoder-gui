@@ -168,12 +168,18 @@ void OSGB_EncoderGui::onEncodeButtonClicked()
 	QStringList jsonFiles = fetchFileList(exportPath, { "*.json" });
 	OSGB_Encoder encoder;
 	auto xorKey = QCryptographicHash::hash(encodeKey.toLatin1(), QCryptographicHash::Md5).toHex();
+	QList<double> diffKey{};
+	for(auto c: xorKey)
+	{
+		auto i = static_cast<int> (c);
+		diffKey.push_back(static_cast<double>(i * i));
+	}
 
 	// 遍历jsonFiles， 并更新processBar进度
 	for (int i = 0; i < jsonFiles.size(); ++i)
 	{
 		ui.statusLabel->setText(QString{ "Encode %1" }.arg(QFileInfo(jsonFiles[i]).fileName()));
-		encoder.encode(jsonFiles[i], xorKey);
+		encoder.encode(jsonFiles[i], diffKey);
 		ui.progressBar->setValue((i + 1) * 100 / jsonFiles.size());
 		qApp->processEvents();
 	}
@@ -226,11 +232,18 @@ void OSGB_EncoderGui::onDecodeButtonClicked()
 	QStringList jsonFiles = fetchFileList(exportPath, { "*.json" });
 	OSGB_Encoder encoder;
 	auto xorKey = QCryptographicHash::hash(encodeKey.toLatin1(), QCryptographicHash::Md5).toHex();
+	QList<double> diffKey{};
+	for(auto c: xorKey)
+	{
+		auto i = static_cast<int> (c);
+		diffKey.push_back(static_cast<double>(i * i));
+	}
+
 	// 遍历jsonFiles， 并更新processBar进度
 	for (int i = 0; i < jsonFiles.size(); ++i)
 	{
 		ui.statusLabel->setText(QString{ "Decode %1" }.arg(QFileInfo(jsonFiles[i]).fileName()));
-		encoder.decode(jsonFiles[i], xorKey);
+		encoder.decode(jsonFiles[i], diffKey);
 		ui.progressBar->setValue((i + 1) * 100 / jsonFiles.size());
 		qApp->processEvents();
 	}
