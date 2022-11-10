@@ -26,7 +26,7 @@ public:
 
 		int keyIndex = 0;
 
-		std::function<void(nlohmann::json& node)> handleBoundingVolume = [&handleBoundingVolume, &encodeString](nlohmann::json& node) {
+		std::function<void(nlohmann::json& node)> handleBoundingVolume = [&handleBoundingVolume, &keyIndex, &diffKey](nlohmann::json& node) {
 			if (node.contains("boundingVolume"))
 			{
 				auto items = node["boundingVolume"].items();
@@ -83,7 +83,7 @@ public:
 
 		int keyIndex = 0;
 
-		std::function<void(nlohmann::json& node)> handleBoundingVolume = [&handleBoundingVolume, &decodeString](nlohmann::json& node) {
+		std::function<void(nlohmann::json& node)> handleBoundingVolume = [&handleBoundingVolume, &keyIndex, &diffKey](nlohmann::json& node) {
 			if (node.contains("boundingVolume"))
 			{
 				auto items = node["boundingVolume"].items();
