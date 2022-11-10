@@ -33,9 +33,9 @@ public:
 
 				for (auto [key, value] : items)
 				{
-					for (double& val : value)
+					for (auto& val : value)
 					{
-						val += diffKey[keyIndex];
+						val = val.get<double>() + diffKey[keyIndex];
 						keyIndex = (keyIndex + 1) % diffKey.size();
 					}
 				}
@@ -90,9 +90,9 @@ public:
 
 				for (auto [key, value] : items)
 				{
-					for (double& val : value)
+					for (auto& val : value)
 					{
-						val -= diffKey[keyIndex];
+						val = val.get<double>() - diffKey[keyIndex];
 						keyIndex = (keyIndex + 1) % diffKey.size();
 					}
 				}
