@@ -5,7 +5,7 @@
 class OSGB_Encoder
 {
 public:
-	bool encode(QString jsonPath, QList<double> diffKey)
+	bool encode(QString jsonPath, QByteArray xorKey)
 	{
 		// 读取json文件
 		QFile jsonFile(jsonPath);
@@ -24,21 +24,28 @@ public:
 		
 		j["asset"]["encrypted"] = true;
 
-		int keyIndex = 0;
+		// 加密
+		auto encodeString = [&xorKey](QByteArray src)->QByteArray
+		{
+			for (int i = 0; i < src.size(); i++)
+			{
+				src[i] = src[i] ^ xorKey[i % xorKey.size()];
+			}
+			return src.toBase64();
+		};
 
-		std::function<void(nlohmann::json& node)> handleBoundingVolume = [&handleBoundingVolume, &keyIndex, &diffKey](nlohmann::json& node) {
+		std::function<void(nlohmann::json& node)> handleBoundingVolume = [&handleBoundingVolume, &encodeString](nlohmann::json& node) {
 			if (node.contains("boundingVolume"))
 			{
 				auto items = node["boundingVolume"].items();
-
+				nlohmann::json extraJ = nlohmann::json::object();
 				for (auto [key, value] : items)
 				{
+					extraJ[key + "_encrypted"] = encodeString(QByteArray::fromStdString(value.dump())).toStdString();
 					for (auto& val : value)
-					{
-						val = val.get<double>() + diffKey[keyIndex];
-						keyIndex = (keyIndex + 1) % diffKey.size();
-					}
+						val = 0;
 				}
+				node["boundingVolume"].merge_patch(extraJ);
 			}
 			if (node.contains("children"))
 			{
@@ -62,7 +69,7 @@ public:
 	}
 	
 
-	bool decode(QString jsonPath, QList<double> diffKey)
+	bool decode(QString jsonPath, QByteArray xorKey)
 	{
 		// 读取json文件
 		QFile jsonFile(jsonPath);
@@ -81,20 +88,37 @@ public:
 
 		j["asset"].erase("encrypted");
 
-		int keyIndex = 0;
+		// 解密
+		auto decodeString = [&xorKey](QByteArray src)->QByteArray
+		{
+			auto dst = QByteArray::fromBase64(src);
+			for (int i = 0; i < dst.size(); i++)
+			{
+				dst[i] = dst[i] ^ xorKey[i % xorKey.size()];
+			}
+			return dst;
+		};
 
-		std::function<void(nlohmann::json& node)> handleBoundingVolume = [&handleBoundingVolume, &keyIndex, &diffKey](nlohmann::json& node) {
+		std::function<void(nlohmann::json& node)> handleBoundingVolume = [&handleBoundingVolume, &decodeString](nlohmann::json& node) {
 			if (node.contains("boundingVolume"))
 			{
 				auto items = node["boundingVolume"].items();
 
+				nlohmann::json extraJ;
+				nlohmann::json removeKeyList;
 				for (auto [key, value] : items)
 				{
-					for (auto& val : value)
+					if (QString::fromStdString(key).endsWith("_encrypted"))
 					{
-						val = val.get<double>() - diffKey[keyIndex];
-						keyIndex = (keyIndex + 1) % diffKey.size();
+						removeKeyList.push_back(key);
+						continue;
 					}
+					extraJ[key] = nlohmann::json::parse(decodeString(QByteArray::fromStdString(node["boundingVolume"][key + "_encrypted"])).toStdString());
+				}
+				node["boundingVolume"].merge_patch(extraJ);
+				for (const std::string& key : removeKeyList)
+				{
+					node["boundingVolume"].erase(key);
 				}
 			}
 			if (node.contains("children"))
